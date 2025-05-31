@@ -24,7 +24,7 @@ A fully-featured blackjack game written in Go, integrated with **Monte Carlo pro
 ## 🚀 Quick Start
 
 ### Requirements
-- Go 1.22+ 
+- Go 1.22+
 - UTF-8 compatible terminal
 
 ### Install Dependencies
@@ -98,7 +98,7 @@ The game displays detailed probability analysis each turn:
 📊 Current Win Probability Analysis
 ────────────────────────────────────────
 🟢 Player Win Probability: 45.6%
-🔴 Dealer Win Probability: 16.7%  
+🔴 Dealer Win Probability: 16.7%
 🟡 Push Probability:       37.6%
 
 📈 Detailed Analysis:
@@ -182,10 +182,10 @@ f* = (bp - q) / b
 ```
 go-blackjack/
 ├── cmd/                         # 🚀 Program entry
-│   └── main.go                   
+│   └── main.go
 ├── internal/                    # 🔒 Internal modules
 │   ├── domain/                  # 🎯 Domain layer - Core business logic
-│   │   └── entities/             
+│   │   └── entities/
 │   │       ├── game.go          # Game aggregate root
 │   │       ├── player.go        # Player entity
 │   │       ├── dealer.go        # Dealer entity
@@ -194,17 +194,17 @@ go-blackjack/
 │   │       ├── hand.go          # Hand entity
 │   │       └── types.go         # Type definitions
 │   ├── application/             # 🔄 Application layer - Use case orchestration
-│   │   ├── services/           
+│   │   ├── services/
 │   │   │   ├── game.go          # Game application service
 │   │   │   └── probability.go   # Probability calculation service
-│   │   └── dtos/               
+│   │   └── dtos/
 │   │       └── game.go          # Data transfer objects
 │   └── interfaces/              # 🖥️ Interface layer - User interaction
-│       └── cli/                
+│       └── cli/
 │           ├── game.go          # CLI handler
 │           └── display.go       # Display service
 ├── go.mod                       # 📦 Dependency management
-├── go.sum                       
+├── go.sum
 └── README.md                    # 📖 Project documentation
 ```
 
@@ -219,7 +219,7 @@ go-blackjack/
 // Game aggregate root - Unified game state management
 type Game struct {
     ID          string
-    Player      *Player  
+    Player      *Player
     Dealer      *Dealer
     Deck        *Deck
     State       GameState // State machine management
@@ -275,7 +275,7 @@ CLI Display ← Kelly Formula Analysis
 type GameState int
 const (
     StateWaitingToBet GameState = iota
-    StatePlayerTurn  
+    StatePlayerTurn
     StateDealerTurn
     StateGameOver
 )
@@ -335,10 +335,10 @@ Please select bet amount:
 ### Game Round - Intelligent Analysis
 ```
 👨 Dealer Hand (first card hidden):
-🂠 🃏A 
+🂠 🃏A
 
 👨 Player Hand (Value: 9):
-🃏5 🃏4 
+🃏5 🃏4
 
 ────────────────────────────────────────
 📊 Current Win Probability Analysis
@@ -374,7 +374,7 @@ Please select bet amount:
 - [ ] 🎮 Implement split functionality
 - [ ] 🔄 Add surrender option
 
-### Medium-term Goals  
+### Medium-term Goals
 - [ ] 🌐 Develop web interface version
 - [ ] 💾 Implement game data persistence
 - [ ] 📱 Mobile adaptation
@@ -409,4 +409,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-⭐ If this project helps you, please give us a star! 
+⭐ If this project helps you, please give us a star!
