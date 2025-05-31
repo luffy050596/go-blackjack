@@ -56,6 +56,29 @@ type ActionAnalysis struct {
 	// 推荐操作
 	RecommendedAction string
 	ExpectedValue     float64 // 推荐操作的期望值
+
+	// 凯利公式相关
+	KellyRecommendation *KellyRecommendation
+}
+
+// KellyRecommendation 凯利公式推荐结果
+type KellyRecommendation struct {
+	// 当前情况下的凯利比例
+	StandardKellyFraction  float64 // 普通胜利的凯利比例
+	BlackjackKellyFraction float64 // Blackjack胜利的凯利比例
+	DoubleKellyFraction    float64 // 加倍的凯利比例
+
+	// 推荐投注金额
+	RecommendedBetAmount   int     // 基于凯利公式的推荐投注金额
+	RecommendedBetFraction float64 // 推荐投注比例（相对于总筹码）
+
+	// 加倍决策
+	ShouldDouble      bool    // 是否推荐加倍
+	DoubleExpectedROI float64 // 加倍的期望投资回报率
+
+	// 风险评估
+	RiskLevel          string  // 风险等级 (Low/Medium/High)
+	ExpectedGrowthRate float64 // 期望资金增长率
 }
 
 // CalculateWinProbabilities 计算获胜概率
@@ -63,6 +86,7 @@ func (pc *ProbabilityCalculator) CalculateWinProbabilities(
 	playerHand *entities.Hand,
 	dealerHand *entities.Hand,
 	remainingCards []entities.Card,
+	currentChips int,
 ) *ProbabilityResult {
 	// 获取当前玩家状态
 	currentPlayerValue := playerHand.Value()
@@ -139,7 +163,8 @@ func (pc *ProbabilityCalculator) CalculateWinProbabilities(
 	// 计算操作胜率分析
 	actionAnalysis := pc.calculateActionAnalysis(playerHand, dealerHand, remainingCards)
 
-	return &ProbabilityResult{
+	// 创建概率结果
+	result := &ProbabilityResult{
 		PlayerWinProbability:  float64(playerWins) / trials,
 		DealerWinProbability:  float64(dealerWins) / trials,
 		PushProbability:       float64(pushes) / trials,
@@ -151,6 +176,12 @@ func (pc *ProbabilityCalculator) CalculateWinProbabilities(
 		Dealer21Probability:   float64(dealer21s) / trials,
 		ActionAnalysis:        actionAnalysis,
 	}
+
+	// 计算凯利公式推荐
+	kellyRecommendation := pc.calculateKellyRecommendation(playerHand, dealerHand, remainingCards, currentChips, result)
+	actionAnalysis.KellyRecommendation = kellyRecommendation
+
+	return result
 }
 
 // HitAnalysis 要牌分析结果
@@ -758,4 +789,208 @@ func (pc *ProbabilityCalculator) removeCard(cards []entities.Card, cardToRemove 
 	}
 
 	return result
+}
+
+// calculateKellyRecommendation 计算凯利公式推荐
+func (pc *ProbabilityCalculator) calculateKellyRecommendation(
+	playerHand *entities.Hand,
+	dealerHand *entities.Hand,
+	remainingCards []entities.Card,
+	currentChips int,
+	probResult *ProbabilityResult,
+) *KellyRecommendation {
+	// 基础概率数据
+	winProb := probResult.PlayerWinProbability
+	blackjackProb := probResult.PlayerBlackjackProb
+	loseProb := probResult.DealerWinProbability
+
+	// 调整概率：排除平局的影响
+	adjustedWinProb := winProb / (winProb + loseProb)
+	adjustedLoseProb := loseProb / (winProb + loseProb)
+	adjustedBlackjackProb := blackjackProb / (winProb + loseProb)
+
+	// 计算不同情况下的凯利比例
+	standardKelly := pc.calculateKellyFraction(adjustedWinProb-adjustedBlackjackProb, adjustedLoseProb, 1.0)
+	blackjackKelly := pc.calculateKellyFraction(adjustedBlackjackProb, adjustedLoseProb, 1.5)
+
+	// 综合凯利比例（考虑Blackjack的额外收益）
+	combinedKelly := standardKelly + blackjackKelly
+
+	// 计算加倍的凯利比例
+	doubleWinProb := 0.0
+	doubleLoseProb := 1.0
+	doubleKelly := 0.0
+
+	if probResult.ActionAnalysis != nil && probResult.ActionAnalysis.CanDouble {
+		doubleWinProb = probResult.ActionAnalysis.DoubleWinRate
+		doubleLoseProb = 1.0 - doubleWinProb
+		// 加倍时赔率仍为1:1，但风险翻倍
+		doubleKelly = pc.calculateKellyFraction(doubleWinProb, doubleLoseProb, 1.0)
+	}
+
+	// 应用保守系数（通常使用25%-50%的凯利比例以降低风险）
+	conservativeFactor := 0.25
+	conservativeKelly := combinedKelly * conservativeFactor
+	conservativeDoubleKelly := doubleKelly * conservativeFactor
+
+	// 计算推荐投注金额
+	recommendedFraction := max(0, min(conservativeKelly, 0.1)) // 限制最大10%
+	recommendedAmount := int(float64(currentChips) * recommendedFraction)
+
+	// 确保最小投注额
+	if recommendedAmount < 10 && recommendedFraction > 0 {
+		recommendedAmount = 10
+	}
+
+	// 评估加倍决策
+	shouldDouble := false
+	doubleROI := 0.0
+
+	if probResult.ActionAnalysis != nil && probResult.ActionAnalysis.CanDouble {
+		doubleROI = (doubleWinProb * 2.0) - 1.0 // 加倍的期望ROI
+		// 当加倍的期望ROI明显好于停牌，且凯利比例支持时推荐加倍
+		standROI := (probResult.ActionAnalysis.StandWinRate * 1.0) - (1.0 - probResult.ActionAnalysis.StandWinRate)
+		shouldDouble = doubleROI > standROI && conservativeDoubleKelly > 0.02
+	}
+
+	// 风险评估
+	riskLevel := pc.assessRiskLevel(combinedKelly)
+	growthRate := pc.calculateExpectedGrowthRate(adjustedWinProb, adjustedLoseProb, combinedKelly)
+
+	return &KellyRecommendation{
+		StandardKellyFraction:  standardKelly,
+		BlackjackKellyFraction: blackjackKelly,
+		DoubleKellyFraction:    doubleKelly,
+		RecommendedBetAmount:   recommendedAmount,
+		RecommendedBetFraction: recommendedFraction,
+		ShouldDouble:           shouldDouble,
+		DoubleExpectedROI:      doubleROI,
+		RiskLevel:              riskLevel,
+		ExpectedGrowthRate:     growthRate,
+	}
+}
+
+// calculateKellyFraction 计算凯利比例
+// winProb: 获胜概率, loseProb: 失败概率, odds: 赔率
+func (pc *ProbabilityCalculator) calculateKellyFraction(winProb, loseProb, odds float64) float64 {
+	if odds <= 0 || winProb <= 0 {
+		return 0
+	}
+
+	// 凯利公式: f* = (bp - q) / b
+	// 其中 b = odds, p = winProb, q = loseProb
+	kelly := (odds*winProb - loseProb) / odds
+
+	// 确保非负值
+	return max(0, kelly)
+}
+
+// assessRiskLevel 评估风险等级
+func (pc *ProbabilityCalculator) assessRiskLevel(kellyFraction float64) string {
+	if kellyFraction <= 0.02 {
+		return "Low"
+	} else if kellyFraction <= 0.05 {
+		return "Medium"
+	} else {
+		return "High"
+	}
+}
+
+// calculateExpectedGrowthRate 计算期望资金增长率
+func (pc *ProbabilityCalculator) calculateExpectedGrowthRate(winProb, loseProb, kellyFraction float64) float64 {
+	if kellyFraction <= 0 {
+		return 0
+	}
+
+	// 使用Kelly公式的对数增长率计算
+	// G = p * log(1 + f * b) + q * log(1 - f)
+	// 这里简化为线性近似
+	expectedReturn := winProb*(1+kellyFraction) + loseProb*(1-kellyFraction) - 1
+	return expectedReturn
+}
+
+// max 返回两个float64中的较大值
+func max(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// min 返回两个float64中的较小值
+func min(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// CalculateBasicKellyFraction 计算基础凯利公式推荐（用于下注阶段）
+func (pc *ProbabilityCalculator) CalculateBasicKellyFraction(winRate, loseRate float64, currentChips int) *KellyRecommendation {
+	// 在娱乐性游戏中，重点是资金管理而非严格的期望收益
+	// 提供保守的资金管理建议
+
+	// 计算理论凯利比例（仅供参考）
+	standardKelly := pc.calculateKellyFraction(winRate, loseRate, 1.0)
+	blackjackRate := 0.048 // 约4.8%的概率获得blackjack
+	blackjackKelly := pc.calculateKellyFraction(blackjackRate, loseRate, 1.5)
+
+	// 实用的资金管理建议
+	// 1. 单次下注不超过总资金的1-2%（保守策略）
+	// 2. 根据筹码数量调整建议
+	var recommendedFraction float64
+	var recommendedAmount int
+	var riskLevel string
+
+	if currentChips >= 1000 {
+		// 资金充足：建议保守下注（1-2%）
+		recommendedFraction = 0.015 // 1.5%
+		calculatedAmount := int(float64(currentChips) * recommendedFraction)
+		if calculatedAmount > 10 {
+			recommendedAmount = calculatedAmount
+		} else {
+			recommendedAmount = 10
+		}
+		riskLevel = "Low"
+	} else if currentChips >= 500 {
+		// 资金中等：稍微保守（1%）
+		recommendedFraction = 0.01 // 1%
+		calculatedAmount := int(float64(currentChips) * recommendedFraction)
+		if calculatedAmount > 10 {
+			recommendedAmount = calculatedAmount
+		} else {
+			recommendedAmount = 10
+		}
+		riskLevel = "Low"
+	} else if currentChips >= 200 {
+		// 资金较少：更加保守（0.5%）
+		recommendedFraction = 0.005 // 0.5%
+		recommendedAmount = 10      // 最小下注
+		riskLevel = "Medium"
+	} else {
+		// 资金紧张：最小下注或考虑离开
+		recommendedFraction = 0.0
+		recommendedAmount = 10 // 最小下注
+		riskLevel = "High"
+	}
+
+	// 确保推荐金额不超过可用筹码
+	if recommendedAmount > currentChips {
+		recommendedAmount = currentChips
+	}
+
+	// 期望增长率（娱乐成本的角度）
+	expectedLoss := (loseRate - winRate) * recommendedFraction // 预期每次下注的损失比例
+
+	return &KellyRecommendation{
+		StandardKellyFraction:  standardKelly,
+		BlackjackKellyFraction: blackjackKelly,
+		DoubleKellyFraction:    0,
+		RecommendedBetAmount:   recommendedAmount,
+		RecommendedBetFraction: recommendedFraction,
+		ShouldDouble:           false,
+		DoubleExpectedROI:      0,
+		RiskLevel:              riskLevel,
+		ExpectedGrowthRate:     -expectedLoss, // 显示为预期损失率
+	}
 }

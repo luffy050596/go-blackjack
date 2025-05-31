@@ -287,6 +287,46 @@ func (d *DisplayService) showActionAnalysis(analysis *dtos.ActionAnalysisDTO) {
 	if analysis.ExpectedValue > 0 {
 		fmt.Printf("\n🏆 最优策略期望胜率: %.1f%%\n", analysis.ExpectedValue*100)
 	}
+
+	// 显示凯利公式推荐
+	if analysis.KellyRecommendation != nil {
+		d.showKellyRecommendation(analysis.KellyRecommendation)
+	}
+}
+
+// showKellyRecommendation 显示凯利公式推荐（仅用于加倍决策）
+func (d *DisplayService) showKellyRecommendation(kelly *dtos.KellyRecommendationDTO) {
+	fmt.Println()
+	fmt.Println("💰 凯利公式加倍分析:")
+
+	// 加倍建议
+	if kelly.ShouldDouble {
+		fmt.Printf("   ⚡ 推荐加倍 (期望ROI: %.1f%%)\n", kelly.DoubleExpectedROI*100)
+	} else {
+		fmt.Println("   ⚠️  不建议加倍：风险回报比不理想")
+	}
+
+	// 风险评估（仅针对加倍决策）
+	if kelly.DoubleKellyFraction > 0 {
+		riskLevel := "Low"
+		if kelly.DoubleKellyFraction > 0.02 {
+			riskLevel = "Medium"
+		}
+		if kelly.DoubleKellyFraction > 0.05 {
+			riskLevel = "High"
+		}
+
+		riskColor := "🟢"
+		if riskLevel == "Medium" {
+			riskColor = "🟡"
+		} else if riskLevel == "High" {
+			riskColor = "🔴"
+		}
+
+		fmt.Printf("   %s 加倍风险等级: %s", riskColor, riskLevel)
+		fmt.Printf(" (凯利比例: %.3f)", kelly.DoubleKellyFraction)
+		fmt.Println()
+	}
 }
 
 // getActionKey 将操作名称转换为操作键
@@ -332,4 +372,54 @@ func GetResultMessage(resultType entities.ResultType) string {
 	default:
 		return "未知结果"
 	}
+}
+
+// ShowKellyBettingRecommendation 显示凯利公式下注建议
+func (d *DisplayService) ShowKellyBettingRecommendation(kelly *dtos.KellyRecommendationDTO) {
+	if kelly == nil {
+		return
+	}
+
+	fmt.Println("💰 资金管理建议:")
+
+	// 推荐投注金额（总是显示，因为这是资金管理而非期望收益判断）
+	if kelly.RecommendedBetAmount > 0 {
+		fmt.Printf("📊 建议下注: %d 筹码 (%.1f%% 资金)\n",
+			kelly.RecommendedBetAmount, kelly.RecommendedBetFraction*100)
+
+		// 给出具体的资金管理建议
+		if kelly.RecommendedBetFraction >= 0.015 {
+			fmt.Println("💡 您的资金状况良好，可以适度下注")
+		} else if kelly.RecommendedBetFraction >= 0.005 {
+			fmt.Println("💡 建议保守下注，控制风险")
+		} else {
+			fmt.Println("💡 建议最小下注，或考虑离开游戏")
+		}
+	}
+
+	// 风险评估（基于资金状况）
+	riskColor := "🟢"
+	riskMessage := ""
+
+	switch kelly.RiskLevel {
+	case "Low":
+		riskColor = "🟢"
+		riskMessage = "资金充足，风险可控"
+	case "Medium":
+		riskColor = "🟡"
+		riskMessage = "资金中等，建议谨慎"
+	case "High":
+		riskColor = "🔴"
+		riskMessage = "资金紧张，高风险"
+	}
+
+	fmt.Printf("%s 风险状况: %s\n", riskColor, riskMessage)
+
+	// 显示预期娱乐成本（而非收益）
+	if kelly.ExpectedGrowthRate < 0 {
+		expectedCost := -kelly.ExpectedGrowthRate * 100
+		fmt.Printf("🎮 预期娱乐成本: %.2f%% 每局\n", expectedCost)
+	}
+
+	fmt.Println()
 }

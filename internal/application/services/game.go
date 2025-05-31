@@ -149,6 +149,30 @@ func (s *GameApplicationService) GetBetOptions() []int {
 	return validOptions
 }
 
+// GetKellyBettingRecommendation 获取凯利公式下注建议
+func (s *GameApplicationService) GetKellyBettingRecommendation() *dtos.KellyRecommendationDTO {
+	// 基于历史概率或基本策略估算胜率
+	// 在没有具体手牌的情况下，使用保守的估算值
+	estimatedWinRate := 0.48 // blackjack的基本胜率约为48%
+	estimatedLoseRate := 0.52
+
+	// 计算基础凯利比例
+	kelly := s.probabilityCalc.CalculateBasicKellyFraction(estimatedWinRate, estimatedLoseRate, s.game.Player.Chips)
+
+	// 转换为DTO
+	return &dtos.KellyRecommendationDTO{
+		StandardKellyFraction:  kelly.StandardKellyFraction,
+		BlackjackKellyFraction: kelly.BlackjackKellyFraction,
+		DoubleKellyFraction:    kelly.DoubleKellyFraction,
+		RecommendedBetAmount:   kelly.RecommendedBetAmount,
+		RecommendedBetFraction: kelly.RecommendedBetFraction,
+		ShouldDouble:           kelly.ShouldDouble,
+		DoubleExpectedROI:      kelly.DoubleExpectedROI,
+		RiskLevel:              kelly.RiskLevel,
+		ExpectedGrowthRate:     kelly.ExpectedGrowthRate,
+	}
+}
+
 // CanPlayerDoubleDown 检查玩家是否可以加倍
 func (s *GameApplicationService) CanPlayerDoubleDown() bool {
 	return s.game.Player.CanDoubleDown()
@@ -169,27 +193,46 @@ func (s *GameApplicationService) CalculateWinProbabilities() *dtos.ProbabilityRe
 	// 获取剩余卡牌
 	remainingCards := s.game.GetRemainingCards()
 
-	// 计算概率
+	// 计算概率（传递当前筹码）
 	result := s.probabilityCalc.CalculateWinProbabilities(
 		s.game.Player.Hand,
 		s.game.Dealer.Hand,
 		remainingCards,
+		s.game.Player.Chips,
 	)
 
 	// 转换操作分析为DTO
 	var actionAnalysisDTO *dtos.ActionAnalysisDTO
 	if result.ActionAnalysis != nil {
+		// 只在可以加倍时显示凯利公式推荐
+		var kellyRecommendationDTO *dtos.KellyRecommendationDTO
+		if result.ActionAnalysis.CanDouble && result.ActionAnalysis.KellyRecommendation != nil {
+			kelly := result.ActionAnalysis.KellyRecommendation
+			kellyRecommendationDTO = &dtos.KellyRecommendationDTO{
+				StandardKellyFraction:  kelly.StandardKellyFraction,
+				BlackjackKellyFraction: kelly.BlackjackKellyFraction,
+				DoubleKellyFraction:    kelly.DoubleKellyFraction,
+				RecommendedBetAmount:   kelly.RecommendedBetAmount,
+				RecommendedBetFraction: kelly.RecommendedBetFraction,
+				ShouldDouble:           kelly.ShouldDouble,
+				DoubleExpectedROI:      kelly.DoubleExpectedROI,
+				RiskLevel:              kelly.RiskLevel,
+				ExpectedGrowthRate:     kelly.ExpectedGrowthRate,
+			}
+		}
+
 		actionAnalysisDTO = &dtos.ActionAnalysisDTO{
-			HitWinRate:        result.ActionAnalysis.HitWinRate,
-			StandWinRate:      result.ActionAnalysis.StandWinRate,
-			DoubleWinRate:     result.ActionAnalysis.DoubleWinRate,
-			SplitWinRate:      result.ActionAnalysis.SplitWinRate,
-			CanHit:            result.ActionAnalysis.CanHit,
-			CanStand:          result.ActionAnalysis.CanStand,
-			CanDouble:         result.ActionAnalysis.CanDouble,
-			CanSplit:          result.ActionAnalysis.CanSplit,
-			RecommendedAction: result.ActionAnalysis.RecommendedAction,
-			ExpectedValue:     result.ActionAnalysis.ExpectedValue,
+			HitWinRate:          result.ActionAnalysis.HitWinRate,
+			StandWinRate:        result.ActionAnalysis.StandWinRate,
+			DoubleWinRate:       result.ActionAnalysis.DoubleWinRate,
+			SplitWinRate:        result.ActionAnalysis.SplitWinRate,
+			CanHit:              result.ActionAnalysis.CanHit,
+			CanStand:            result.ActionAnalysis.CanStand,
+			CanDouble:           result.ActionAnalysis.CanDouble,
+			CanSplit:            result.ActionAnalysis.CanSplit,
+			RecommendedAction:   result.ActionAnalysis.RecommendedAction,
+			ExpectedValue:       result.ActionAnalysis.ExpectedValue,
+			KellyRecommendation: kellyRecommendationDTO,
 		}
 	}
 

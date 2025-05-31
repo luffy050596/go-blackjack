@@ -87,4 +87,27 @@ type ActionAnalysisDTO struct {
 	// 推荐操作
 	RecommendedAction string  `json:"recommended_action"`
 	ExpectedValue     float64 `json:"expected_value"` // 推荐操作的期望值
+
+	// 凯利公式相关
+	KellyRecommendation *KellyRecommendationDTO `json:"kelly_recommendation,omitempty"`
+}
+
+// KellyRecommendationDTO 凯利公式推荐数据传输对象
+type KellyRecommendationDTO struct {
+	// 当前情况下的凯利比例
+	StandardKellyFraction  float64 `json:"standard_kelly_fraction"`  // 普通胜利的凯利比例
+	BlackjackKellyFraction float64 `json:"blackjack_kelly_fraction"` // Blackjack胜利的凯利比例
+	DoubleKellyFraction    float64 `json:"double_kelly_fraction"`    // 加倍的凯利比例
+
+	// 推荐投注金额
+	RecommendedBetAmount   int     `json:"recommended_bet_amount"`   // 基于凯利公式的推荐投注金额
+	RecommendedBetFraction float64 `json:"recommended_bet_fraction"` // 推荐投注比例（相对于总筹码）
+
+	// 加倍决策
+	ShouldDouble      bool    `json:"should_double"`       // 是否推荐加倍
+	DoubleExpectedROI float64 `json:"double_expected_roi"` // 加倍的期望投资回报率
+
+	// 风险评估
+	RiskLevel          string  `json:"risk_level"`           // 风险等级 (Low/Medium/High)
+	ExpectedGrowthRate float64 `json:"expected_growth_rate"` // 期望资金增长率
 }

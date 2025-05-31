@@ -119,6 +119,10 @@ func (h *GameHandler) handleBetting() bool {
 	betOptions := h.gameService.GetBetOptions()
 	h.display.ShowBetOptions(betOptions)
 
+	// 显示凯利公式下注建议
+	kellyRecommendation := h.gameService.GetKellyBettingRecommendation()
+	h.display.ShowKellyBettingRecommendation(kellyRecommendation)
+
 	for {
 		input := h.getInput("请选择下注金额 (输入选项编号或 'q' 退出): ")
 
