@@ -1,4 +1,4 @@
-package main
+package game
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 )
 
 // showMenu 主菜单
-func (g *Game) showMenu() {
+func (g *Game) ShowMenu() {
 	for {
 		g.display.showWelcome()
 		fmt.Println("1. 开始游戏")

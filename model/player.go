@@ -1,4 +1,4 @@
-package main
+package model
 
 // Player 玩家结构
 type Player struct {

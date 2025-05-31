@@ -6,7 +6,7 @@
 
 ### 运行游戏
 ```bash
-go run .
+go run ./cmd
 ```
 
 ### 游戏操作

@@ -1,4 +1,4 @@
-package main
+package game
 
 import (
 	"bufio"
@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/luffy050596/go-blackjack/model"
 )
 
 const (
@@ -14,9 +16,9 @@ const (
 
 // Game 游戏结构
 type Game struct {
-	Deck        *Deck
-	Player      *Player
-	Dealer      *Dealer
+	Deck        *model.Deck
+	Player      *model.Player
+	Dealer      *model.Dealer
 	Scanner     *bufio.Scanner
 	RoundNumber int
 	service     *GameService
@@ -26,9 +28,9 @@ type Game struct {
 // NewGame 创建新游戏
 func NewGame() *Game {
 	game := &Game{
-		Deck:        NewDeck(),
-		Player:      NewPlayer("玩家", InitialChips),
-		Dealer:      &Dealer{},
+		Deck:        model.NewDeck(),
+		Player:      model.NewPlayer("玩家", InitialChips),
+		Dealer:      &model.Dealer{},
 		Scanner:     bufio.NewScanner(os.Stdin),
 		RoundNumber: 0,
 	}
@@ -85,7 +87,7 @@ func (g *Game) playRound() {
 func (g *Game) ensureDeckSize() {
 	if len(g.Deck.Cards) < 10 {
 		g.display.showInfo("牌不够了，重新洗牌...")
-		g.Deck = NewDeck()
+		g.Deck = model.NewDeck()
 		time.Sleep(1 * time.Second)
 	}
 }

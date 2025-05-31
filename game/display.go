@@ -1,8 +1,10 @@
-package main
+package game
 
 import (
 	"fmt"
 	"time"
+
+	"github.com/luffy050596/go-blackjack/model"
 )
 
 // Display 显示相关的结构
@@ -80,7 +82,7 @@ func (d *Display) showPlayerBust() {
 }
 
 // showCardDealt 显示发牌信息
-func (d *Display) showCardDealt(card Card, isPlayer bool) {
+func (d *Display) showCardDealt(card model.Card, isPlayer bool) {
 	if isPlayer {
 		fmt.Printf("你拿到了: %s\n", card)
 	} else {

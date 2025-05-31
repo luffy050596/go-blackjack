@@ -1,4 +1,4 @@
-package main
+package game
 
 // ResultType 游戏结果类型
 type ResultType int
