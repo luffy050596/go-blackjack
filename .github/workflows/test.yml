@@ -38,4 +38,4 @@ jobs:
         with:
           fetch-depth: 0
       - name: Test
-        run: make test
+        run: go test ./...
