@@ -45,13 +45,35 @@ func (g *Game) getInput(prompt string) string {
 func (g *Game) gameLoop() {
 	for {
 		g.clearScreen()
+
+		// 检查玩家是否还有筹码
+		if !g.Player.HasChips() {
+			fmt.Println("💸 你的筹码用完了！")
+			fmt.Println()
+			choice := g.getInput("是否重新开始游戏？(y/n): ")
+			if strings.ToLower(choice) == "y" || strings.ToLower(choice) == "yes" {
+				// 重置玩家筹码
+				g.Player.Chips = 1000
+				g.Player.Bet = 0
+				g.RoundNumber = 0
+				fmt.Println("🎉 重新开始！你获得了1000筹码")
+				time.Sleep(1 * time.Second)
+				continue
+			} else {
+				break
+			}
+		}
+
 		g.playRound()
 
-		fmt.Println()
-		choice := g.getInput("再来一局？(y/n): ")
+		// 如果玩家还有筹码，询问是否继续
+		if g.Player.HasChips() {
+			fmt.Println()
+			choice := g.getInput("再来一局？(y/n): ")
 
-		if strings.ToLower(choice) != "y" && strings.ToLower(choice) != "yes" {
-			break
+			if strings.ToLower(choice) != "y" && strings.ToLower(choice) != "yes" {
+				break
+			}
 		}
 	}
 }

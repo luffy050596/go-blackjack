@@ -17,7 +17,6 @@ func (h *Hand) Value() int {
 	value := 0
 	aceCount := 0
 
-	// 计算基础点数并统计A牌数量
 	for _, card := range h.Cards {
 		if card.IsAce() {
 			aceCount++
@@ -27,7 +26,7 @@ func (h *Hand) Value() int {
 
 	// 当总点数超过21时，将A从11调整为1
 	for aceCount > 0 && value > 21 {
-		value -= 10 // 将一张A从11点调整为1点
+		value -= 10
 		aceCount--
 	}
 
@@ -47,7 +46,6 @@ func (h *Hand) AceCount() int {
 
 // IsSoft 获取软点数信息（是否包含被当作11点的A）
 func (h *Hand) IsSoft() bool {
-	// 如果没有A，肯定不是软点数
 	if h.AceCount() == 0 {
 		return false
 	}
@@ -55,7 +53,6 @@ func (h *Hand) IsSoft() bool {
 	value := 0
 	aceCount := 0
 
-	// 计算基础点数并统计A牌数量
 	for _, card := range h.Cards {
 		if card.IsAce() {
 			aceCount++

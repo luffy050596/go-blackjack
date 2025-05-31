@@ -21,7 +21,7 @@ type Game struct {
 func NewGame() *Game {
 	return &Game{
 		Deck:        NewDeck(),
-		Player:      &Player{Name: "玩家"},
+		Player:      NewPlayer("玩家", 1000), // 初始筹码1000
 		Dealer:      &Dealer{},
 		Scanner:     bufio.NewScanner(os.Stdin),
 		RoundNumber: 0, // 初始轮数为0
@@ -51,9 +51,19 @@ func (g *Game) playRound() {
 	// 增加轮数
 	g.RoundNumber++
 
-	// 显示轮数
 	fmt.Printf("=== 第%d轮开始 ===\n", g.RoundNumber)
+	fmt.Printf("💰 当前筹码: %d\n", g.Player.Chips)
 	fmt.Println()
+
+	if !g.Player.HasChips() {
+		fmt.Println("💸 你的筹码用完了！游戏结束！")
+		return
+	}
+
+	// 下注阶段
+	if !g.placeBet() {
+		return
+	}
 
 	// 检查牌堆是否足够
 	if len(g.Deck.Cards) < 10 {
@@ -62,19 +72,79 @@ func (g *Game) playRound() {
 		time.Sleep(1 * time.Second)
 	}
 
-	// 发初始牌
 	g.dealInitialCards()
 
-	// 玩家回合
 	g.playerTurn()
 
-	// 如果玩家没有爆牌且没有Blackjack，进行庄家回合
 	if !g.Player.Hand.IsBust() && !g.Player.Hand.IsBlackjack() {
 		g.dealerTurn()
 	}
 
-	// 判断结果
 	g.determineWinner()
+}
+
+// 预设的下注选项
+var betOptions = []int{10, 25, 50, 100, 200}
+
+// placeBet 下注阶段
+func (g *Game) placeBet() bool {
+	fmt.Println("=== 下注阶段 ===")
+	fmt.Printf("💰 当前筹码: %d\n", g.Player.Chips)
+	fmt.Println()
+
+	// 显示可用的下注选项
+	fmt.Println("请选择下注金额:")
+	validOptions := []int{}
+	optionIndex := 1
+
+	for _, amount := range betOptions {
+		if amount <= g.Player.Chips {
+			fmt.Printf("%d. %d 筹码\n", optionIndex, amount)
+			validOptions = append(validOptions, amount)
+			optionIndex++
+		}
+	}
+
+	// 如果玩家筹码很少，添加全押选项
+	if g.Player.Chips < betOptions[0] && g.Player.Chips > 0 {
+		fmt.Printf("%d. %d 筹码 (全押)\n", optionIndex, g.Player.Chips)
+		validOptions = append(validOptions, g.Player.Chips)
+		optionIndex++
+	}
+
+	fmt.Printf("%d. 退出游戏\n", optionIndex)
+	fmt.Println()
+
+	for {
+		input := g.getInput("请选择 (输入选项编号): ")
+
+		var choice int
+		if _, err := fmt.Sscanf(input, "%d", &choice); err != nil {
+			fmt.Println("❌ 请输入有效的选项编号")
+			continue
+		}
+
+		if choice == optionIndex {
+			return false
+		}
+
+		if choice < 1 || choice > len(validOptions) {
+			fmt.Printf("❌ 请输入 1-%d 之间的选项编号\n", optionIndex)
+			continue
+		}
+
+		betAmount := validOptions[choice-1]
+
+		if g.Player.PlaceBet(betAmount) {
+			fmt.Printf("✅ 下注成功！下注金额: %d\n", betAmount)
+			fmt.Printf("💰 剩余筹码: %d\n", g.Player.Chips)
+			fmt.Println()
+			time.Sleep(1 * time.Second)
+			return true
+		} else {
+			fmt.Println("❌ 下注失败，请重试")
+		}
+	}
 }
 
 // playerTurn 玩家回合
@@ -84,19 +154,16 @@ func (g *Game) playerTurn() {
 	for {
 		g.displayGame(true)
 
-		// 检查是否为Blackjack
 		if g.Player.Hand.IsBlackjack() {
 			fmt.Println("🎉 恭喜！你拿到了Blackjack！")
 			return
 		}
 
-		// 检查是否爆牌
 		if g.Player.Hand.IsBust() {
 			fmt.Println("💥 爆牌了！你输了！")
 			return
 		}
 
-		// 获取玩家选择
 		choice := g.getInput("请选择: (h)要牌 (s)停牌 (q)退出游戏: ")
 
 		switch strings.ToLower(choice) {
@@ -139,7 +206,6 @@ func (g *Game) dealerTurn() {
 			break
 		}
 
-		// 检查庄家是否爆牌
 		if g.Dealer.Hand.IsBust() {
 			fmt.Println("💥 庄家爆牌！")
 			time.Sleep(1 * time.Second)
@@ -156,51 +222,85 @@ func (g *Game) determineWinner() {
 	dealerValue := g.Dealer.Hand.Value()
 	playerBlackjack := g.Player.Hand.IsBlackjack()
 	dealerBlackjack := g.Dealer.Hand.IsBlackjack()
+	betAmount := g.Player.Bet // 保存下注金额用于显示
 
 	fmt.Printf("=== 第%d轮游戏结果 ===\n", g.RoundNumber)
+	fmt.Printf("💰 下注金额: %d\n", betAmount)
 
-	// 玩家爆牌
 	if g.Player.Hand.IsBust() {
 		fmt.Println("💀 你爆牌了，庄家获胜！")
+		g.Player.LoseBet()
+		fmt.Printf("💸 损失: %d 筹码\n", betAmount)
+		g.showChipsStatus()
 		return
 	}
 
-	// 庄家爆牌
 	if g.Dealer.Hand.IsBust() {
 		fmt.Println("🎉 庄家爆牌，你获胜！")
+		g.Player.WinBet(1.0) // 1:1 赔率
+		fmt.Printf("💰 获得: %d 筹码 (1:1)\n", betAmount)
+		g.showChipsStatus()
 		return
 	}
 
-	// 双方都有Blackjack
 	if playerBlackjack && dealerBlackjack {
 		fmt.Println("🤝 双方都是Blackjack，平局！")
+		g.Player.PushBet()
+		fmt.Println("💰 返还下注金额")
+		g.showChipsStatus()
 		return
 	}
 
-	// 只有玩家有Blackjack
 	if playerBlackjack {
 		fmt.Println("🎉 你拿到Blackjack，获胜！(3:2赔率)")
+		winnings := int(float64(betAmount) * 1.5)
+		g.Player.WinBet(1.5) // 3:2 赔率
+		fmt.Printf("💰 获得: %d 筹码 (3:2)\n", winnings)
+		g.showChipsStatus()
 		return
 	}
 
-	// 只有庄家有Blackjack
 	if dealerBlackjack {
 		fmt.Println("💀 庄家拿到Blackjack，你输了！")
+		g.Player.LoseBet()
+		fmt.Printf("💸 损失: %d 筹码\n", betAmount)
+		g.showChipsStatus()
 		return
 	}
 
-	// 比较点数
 	if playerValue > dealerValue {
 		fmt.Println("🎉 你的点数更高，获胜！")
+		g.Player.WinBet(1.0) // 1:1 赔率
+		fmt.Printf("💰 获得: %d 筹码 (1:1)\n", betAmount)
+		g.showChipsStatus()
 	} else if playerValue < dealerValue {
 		fmt.Println("💀 庄家点数更高，你输了！")
+		g.Player.LoseBet()
+		fmt.Printf("💸 损失: %d 筹码\n", betAmount)
+		g.showChipsStatus()
 	} else {
 		fmt.Println("🤝 点数相同，平局！")
+		g.Player.PushBet()
+		fmt.Println("💰 返还下注金额")
+		g.showChipsStatus()
 	}
+}
+
+// showChipsStatus 显示筹码状态
+func (g *Game) showChipsStatus() {
+	fmt.Printf("💰 当前筹码: %d\n", g.Player.Chips)
+	if g.Player.Chips <= 0 {
+		fmt.Println("💸 你的筹码用完了！")
+	}
+	fmt.Println()
 }
 
 // displayGame 显示游戏状态
 func (g *Game) displayGame(hideDealer bool) {
+	// 显示筹码和下注信息
+	fmt.Printf("💰 筹码: %d | 💸 下注: %d\n", g.Player.Chips, g.Player.Bet)
+	fmt.Println()
+
 	// 显示庄家手牌
 	if hideDealer && len(g.Dealer.Hand.Cards) > 0 {
 		fmt.Printf("庄家: %s [?] (点数: ?)\n", g.Dealer.Hand.Cards[0])

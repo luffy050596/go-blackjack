@@ -21,7 +21,6 @@ func NewDeck() *Deck {
 		}
 	}
 
-	// 洗牌
 	deck.Shuffle()
 	return deck
 }
