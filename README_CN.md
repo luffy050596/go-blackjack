@@ -1,6 +1,6 @@
 # 🃏 《二十一点》智能游戏 (Intelligent Blackjack Game)
 
-**🌐 Language / 语言选择**: [English](README_EN.md) | [中文](README.md)
+**🌐 Language / 语言选择**: [English](README.md) | [中文](README_CN.md)
 
 一个用Go语言编写的功能完整的二十一点游戏，集成了**蒙特卡洛概率分析**、**凯利公式资金管理**和**智能决策建议**系统。
 

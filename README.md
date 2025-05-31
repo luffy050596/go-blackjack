@@ -1,6 +1,6 @@
 # 🃏 Intelligent Blackjack Game
 
-**🌐 Language / 语言选择**: [English](README_EN.md) | [中文](README.md)
+**🌐 Language / 语言选择**: [English](README.md) | [中文](README_CN.md)
 
 A fully-featured blackjack game written in Go, integrated with **Monte Carlo probability analysis**, **Kelly Criterion bankroll management**, and **intelligent decision recommendation** systems.
 
