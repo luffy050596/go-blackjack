@@ -1,3 +1,4 @@
+// Package cli provides command line interface functionality for the blackjack game.
 package cli
 
 import (
@@ -83,21 +84,24 @@ func (d *DisplayService) ShowDealerTurnStart() {
 	time.Sleep(1 * time.Second)
 }
 
-type playerPromptOptions struct {
+// PlayerPromptOptions contains options for player prompt configuration
+type PlayerPromptOptions struct {
 	doubleDown bool
 }
 
-type playerPromptOption func(options *playerPromptOptions)
+// PlayerPromptOption is a function type for configuring player prompt options
+type PlayerPromptOption func(options *PlayerPromptOptions)
 
-func WithDoubleDown(doubleDown bool) playerPromptOption {
-	return func(options *playerPromptOptions) {
+// WithDoubleDown configures whether double down option is available
+func WithDoubleDown(doubleDown bool) PlayerPromptOption {
+	return func(options *PlayerPromptOptions) {
 		options.doubleDown = doubleDown
 	}
 }
 
 // buildPlayerPrompt 构建玩家输入提示
-func (d *DisplayService) buildPlayerPrompt(options ...playerPromptOption) string {
-	opts := playerPromptOptions{}
+func (d *DisplayService) buildPlayerPrompt(options ...PlayerPromptOption) string {
+	opts := PlayerPromptOptions{}
 
 	for _, option := range options {
 		option(&opts)
@@ -114,6 +118,7 @@ func (d *DisplayService) buildPlayerPrompt(options ...playerPromptOption) string
 // ShowGameState 显示游戏状态
 func (d *DisplayService) ShowGameState(gameState *dtos.GameStateDTO, hideFirstDealerCard bool) {
 	fmt.Print("\n👨 庄家手牌")
+
 	if hideFirstDealerCard && len(gameState.DealerHand.Cards) > 1 {
 		fmt.Println(" (第一张牌隐藏):")
 		d.showHand(gameState.DealerHand, true)
@@ -317,9 +322,10 @@ func (d *DisplayService) showKellyRecommendation(kelly *dtos.KellyRecommendation
 		}
 
 		riskColor := "🟢"
-		if riskLevel == "Medium" {
+		switch riskLevel {
+		case "Medium":
 			riskColor = "🟡"
-		} else if riskLevel == "High" {
+		case "High":
 			riskColor = "🔴"
 		}
 
@@ -388,11 +394,12 @@ func (d *DisplayService) ShowKellyBettingRecommendation(kelly *dtos.KellyRecomme
 			kelly.RecommendedBetAmount, kelly.RecommendedBetFraction*100)
 
 		// 给出具体的资金管理建议
-		if kelly.RecommendedBetFraction >= 0.015 {
+		switch {
+		case kelly.RecommendedBetFraction >= 0.015:
 			fmt.Println("💡 您的资金状况良好，可以适度下注")
-		} else if kelly.RecommendedBetFraction >= 0.005 {
+		case kelly.RecommendedBetFraction >= 0.005:
 			fmt.Println("💡 建议保守下注，控制风险")
-		} else {
+		default:
 			fmt.Println("💡 建议最小下注，或考虑离开游戏")
 		}
 	}

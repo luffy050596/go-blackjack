@@ -1,3 +1,4 @@
+// Package dtos contains data transfer objects for the blackjack game application.
 package dtos
 
 import "github.com/luffy050596/go-blackjack/internal/domain/entities"

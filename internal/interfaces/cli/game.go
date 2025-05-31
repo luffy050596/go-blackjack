@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -38,7 +39,12 @@ func (h *GameHandler) Run() {
 
 		switch choice {
 		case MenuOptionStart:
-			h.playGame()
+			if err := h.playGame(); err != nil {
+				if errors.Is(err, ErrorQuit) {
+					return
+				}
+				h.display.ShowError(fmt.Sprintf("游戏错误: %v", err))
+			}
 		case MenuOptionRules:
 			h.display.ShowRules()
 		case MenuOptionExit:
@@ -51,22 +57,23 @@ func (h *GameHandler) Run() {
 }
 
 // playGame 游戏主循环
-func (h *GameHandler) playGame() {
+func (h *GameHandler) playGame() error {
 	for !h.gameService.IsGameOver() {
 		if err := h.playRound(); err != nil {
 			h.display.ShowError(fmt.Sprintf("游戏错误: %v", err))
-			return
+			return err
 		}
 
 		if h.gameService.IsGameOver() {
 			h.display.ShowGameOver()
-			return
+			return nil
 		}
 
 		if !h.askPlayAgain() {
-			return
+			return nil
 		}
 	}
+	return nil
 }
 
 // playRound 单轮游戏
@@ -147,12 +154,18 @@ func (h *GameHandler) handleBetting() bool {
 	}
 }
 
+// ErrorQuit 退出游戏的标记
+var ErrorQuit = errors.New("quit")
+
 // handlePlayerTurn 处理玩家回合
 func (h *GameHandler) handlePlayerTurn() error {
 	h.display.ShowPlayerTurnStart()
 
+	shouldStartDealerTurn := true
 	defer func() {
-		h.gameService.StartDealerTurn()
+		if shouldStartDealerTurn {
+			h.gameService.StartDealerTurn()
+		}
 	}()
 
 	for {
@@ -195,7 +208,8 @@ func (h *GameHandler) handlePlayerTurn() error {
 		h.display.ShowActionResult(result)
 
 		if result.Action == entities.ActionQuit {
-			os.Exit(0)
+			shouldStartDealerTurn = false
+			return ErrorQuit
 		}
 
 		if !result.Continue {

@@ -7,6 +7,7 @@ type Hand struct {
 	Cards []Card
 }
 
+// NewHand creates a new hand with an empty card slice
 func NewHand() *Hand {
 	return &Hand{
 		Cards: make([]Card, 0, 8),
@@ -88,9 +89,10 @@ func (h *Hand) IsBust() bool {
 
 // String 显示手牌
 func (h *Hand) String() string {
-	var cards []string
+	cards := make([]string, 0, len(h.Cards))
 	for _, card := range h.Cards {
 		cards = append(cards, card.String())
 	}
+
 	return strings.Join(cards, " ")
 }

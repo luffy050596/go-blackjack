@@ -1,3 +1,4 @@
+// Package main is the entry point for the Go Blackjack game application.
 package main
 
 import (

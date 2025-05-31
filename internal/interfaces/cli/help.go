@@ -2,9 +2,8 @@ package cli
 
 import "fmt"
 
-// showRules 显示游戏规则
+// ShowRules 显示游戏规则
 func (d *DisplayService) ShowRules() {
-
 	fmt.Println("=== 二十一点游戏规则 ===")
 	fmt.Println()
 	fmt.Println("🎯 游戏目标:")
@@ -50,5 +49,9 @@ func (d *DisplayService) ShowRules() {
 	fmt.Println("   • 平局: 双方点数相同")
 	fmt.Println()
 	fmt.Print("按回车键继续...")
+
+	// 等待用户输入
+	_, _ = fmt.Scanln()
+
 	d.clearScreen()
 }

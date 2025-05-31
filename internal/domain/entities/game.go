@@ -10,9 +10,13 @@ import (
 type GameState int
 
 const (
+	// StateWaitingToBet represents the state when waiting for a bet
 	StateWaitingToBet GameState = iota
+	// StatePlayerTurn represents the state when it's the player's turn
 	StatePlayerTurn
+	// StateDealerTurn represents the state when it's the dealer's turn
 	StateDealerTurn
+	// StateGameOver represents the state when the game is over
 	StateGameOver
 )
 

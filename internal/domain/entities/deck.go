@@ -29,7 +29,7 @@ func NewDeck() *Deck {
 // Shuffle 洗牌
 func (d *Deck) Shuffle() {
 	seed := uint64(time.Now().UnixNano())
-	rd := rand.New(rand.NewPCG(uint64(seed), uint64(seed>>32)))
+	rd := rand.New(rand.NewPCG(seed, seed>>32))
 
 	for i := len(d.Cards) - 1; i > 0; i-- {
 		j := rd.IntN(i + 1)

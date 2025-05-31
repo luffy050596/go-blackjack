@@ -222,11 +222,12 @@ func (pc *ProbabilityCalculator) calculateHitAnalysis(currentValue int, remainin
 
 		newValue := currentValue + cardValue
 
-		if newValue > 21 {
+		switch {
+		case newValue > 21:
 			bustCards++
-		} else if newValue == 21 {
+		case newValue == 21:
 			hit21Cards++
-		} else {
+		default:
 			safeCards++
 		}
 	}
@@ -291,15 +292,16 @@ func (pc *ProbabilityCalculator) calculateProbabilitiesFor21Player(
 		}
 
 		// 判断胜负（玩家固定21点）
-		if dealerBust {
+		switch {
+		case dealerBust:
 			// 玩家胜利（已计入playerWins）
-		} else if dealerBlackjack && playerBlackjackProb < 1.0 {
+		case dealerBlackjack && playerBlackjackProb < 1.0:
 			// 庄家Blackjack而玩家不是Blackjack
 			dealerWins++
-		} else if dealerValue == 21 {
+		case dealerValue == 21:
 			// 平局
 			pushes++
-		} else {
+		default:
 			// 玩家21点胜过庄家非21点（已计入playerWins）
 		}
 	}
@@ -422,22 +424,22 @@ func (pc *ProbabilityCalculator) getBasicStrategyAction(playerHand *entities.Han
 			return "hit"
 		}
 		return "stand"
-	} else {
-		// 硬牌策略
-		if playerValue <= 11 {
-			return "hit"
-		}
-		if playerValue == 12 && (dealerUpCard >= 4 && dealerUpCard <= 6) {
-			return "stand"
-		}
-		if playerValue >= 13 && playerValue <= 16 && dealerUpCard <= 6 {
-			return "stand"
-		}
-		if playerValue >= 17 {
-			return "stand"
-		}
+	}
+
+	// 硬牌策略
+	if playerValue <= 11 {
 		return "hit"
 	}
+	if playerValue == 12 && (dealerUpCard >= 4 && dealerUpCard <= 6) {
+		return "stand"
+	}
+	if playerValue >= 13 && playerValue <= 16 && dealerUpCard <= 6 {
+		return "stand"
+	}
+	if playerValue >= 17 {
+		return "stand"
+	}
+	return "hit"
 }
 
 // copyHand 复制手牌
@@ -450,8 +452,8 @@ func (pc *ProbabilityCalculator) copyHand(hand *entities.Hand) *entities.Hand {
 // createShuffledDeckWithHiddenCard 创建包含庄家隐藏牌的洗牌牌组
 func (pc *ProbabilityCalculator) createShuffledDeckWithHiddenCard(remainingCards []entities.Card, dealerHand *entities.Hand) []entities.Card {
 	// 复制剩余卡牌
-	deck := make([]entities.Card, len(remainingCards))
-	copy(deck, remainingCards)
+	deck := make([]entities.Card, 0, len(remainingCards)+1)
+	deck = append(deck, remainingCards...)
 
 	// 如果庄家有隐藏牌（第二张牌），将其添加到牌堆中
 	if len(dealerHand.Cards) > 1 {
@@ -479,21 +481,22 @@ func (pc *ProbabilityCalculator) evaluateResult(playerHand *entities.Hand, deale
 	}
 
 	// 判断胜负
-	if result.PlayerBust {
+	switch {
+	case result.PlayerBust:
 		result.Winner = "dealer"
-	} else if result.DealerBust {
+	case result.DealerBust:
 		result.Winner = "player"
-	} else if result.PlayerBlackjack && result.DealerBlackjack {
+	case result.PlayerBlackjack && result.DealerBlackjack:
 		result.Winner = "push"
-	} else if result.PlayerBlackjack {
+	case result.PlayerBlackjack:
 		result.Winner = "player"
-	} else if result.DealerBlackjack {
+	case result.DealerBlackjack:
 		result.Winner = "dealer"
-	} else if result.PlayerFinalValue > result.DealerFinalValue {
+	case result.PlayerFinalValue > result.DealerFinalValue:
 		result.Winner = "player"
-	} else if result.PlayerFinalValue < result.DealerFinalValue {
+	case result.PlayerFinalValue < result.DealerFinalValue:
 		result.Winner = "dealer"
-	} else {
+	default:
 		result.Winner = "push"
 	}
 
@@ -617,11 +620,8 @@ func (pc *ProbabilityCalculator) calculateHitWinRate(playerHand *entities.Hand, 
 		var winRate float64
 		if newPlayerHand.IsBust() {
 			winRate = 0.0 // 爆牌必败
-		} else if newPlayerHand.Value() == 21 {
-			// 到达21点，计算对该手牌的胜率
-			winRate = pc.calculateStandWinRateSimple(newPlayerHand, dealerHand, newRemainingCards, trials)
 		} else {
-			// 简化计算：只计算停牌胜率，不进行深度递归
+			// 无论是21点还是其他情况，都使用相同的计算方法
 			winRate = pc.calculateStandWinRateSimple(newPlayerHand, dealerHand, newRemainingCards, trials)
 		}
 
@@ -793,9 +793,9 @@ func (pc *ProbabilityCalculator) removeCard(cards []entities.Card, cardToRemove 
 
 // calculateKellyRecommendation 计算凯利公式推荐
 func (pc *ProbabilityCalculator) calculateKellyRecommendation(
-	playerHand *entities.Hand,
-	dealerHand *entities.Hand,
-	remainingCards []entities.Card,
+	_ *entities.Hand,
+	_ *entities.Hand,
+	_ []entities.Card,
 	currentChips int,
 	probResult *ProbabilityResult,
 ) *KellyRecommendation {
@@ -805,68 +805,67 @@ func (pc *ProbabilityCalculator) calculateKellyRecommendation(
 	loseProb := probResult.DealerWinProbability
 
 	// 调整概率：排除平局的影响
-	adjustedWinProb := winProb / (winProb + loseProb)
-	adjustedLoseProb := loseProb / (winProb + loseProb)
-	adjustedBlackjackProb := blackjackProb / (winProb + loseProb)
-
-	// 计算不同情况下的凯利比例
-	standardKelly := pc.calculateKellyFraction(adjustedWinProb-adjustedBlackjackProb, adjustedLoseProb, 1.0)
-	blackjackKelly := pc.calculateKellyFraction(adjustedBlackjackProb, adjustedLoseProb, 1.5)
-
-	// 综合凯利比例（考虑Blackjack的额外收益）
-	combinedKelly := standardKelly + blackjackKelly
-
-	// 计算加倍的凯利比例
-	doubleWinProb := 0.0
-	doubleLoseProb := 1.0
-	doubleKelly := 0.0
-
-	if probResult.ActionAnalysis != nil && probResult.ActionAnalysis.CanDouble {
-		doubleWinProb = probResult.ActionAnalysis.DoubleWinRate
-		doubleLoseProb = 1.0 - doubleWinProb
-		// 加倍时赔率仍为1:1，但风险翻倍
-		doubleKelly = pc.calculateKellyFraction(doubleWinProb, doubleLoseProb, 1.0)
+	totalNonPushProb := winProb + loseProb
+	if totalNonPushProb > 0 {
+		winProb /= totalNonPushProb
+		loseProb /= totalNonPushProb
 	}
 
-	// 应用保守系数（通常使用25%-50%的凯利比例以降低风险）
-	conservativeFactor := 0.25
-	conservativeKelly := combinedKelly * conservativeFactor
-	conservativeDoubleKelly := doubleKelly * conservativeFactor
+	// 标准凯利计算（1:1赔率）
+	standardKellyFraction := pc.calculateKellyFraction(winProb, loseProb, 1.0)
+
+	// Blackjack凯利计算（3:2赔率）
+	blackjackKellyFraction := pc.calculateKellyFraction(blackjackProb, 1.0-blackjackProb, 1.5)
+
+	// 加倍决策凯利计算
+	doubleWinProb := 0.0
+	if probResult.ActionAnalysis != nil {
+		doubleWinProb = probResult.ActionAnalysis.DoubleWinRate
+	}
+	doubleLoseProb := 1.0
+	if doubleWinProb > 0 {
+		doubleLoseProb = 1.0 - doubleWinProb
+	}
+	doubleKellyFraction := pc.calculateKellyFraction(doubleWinProb, doubleLoseProb, 1.0)
 
 	// 计算推荐投注金额
-	recommendedFraction := max(0, min(conservativeKelly, 0.1)) // 限制最大10%
+	recommendedFraction := standardKellyFraction
+
+	// 选择最优的凯利比例
+	if blackjackKellyFraction > recommendedFraction {
+		recommendedFraction = blackjackKellyFraction
+	}
+
+	// 安全限制：不超过总筹码的10%
+	recommendedFraction = minFloat64(recommendedFraction, 0.10)
+
 	recommendedAmount := int(float64(currentChips) * recommendedFraction)
 
-	// 确保最小投注额
-	if recommendedAmount < 10 && recommendedFraction > 0 {
+	// 最小投注限制
+	if recommendedAmount < 10 && currentChips >= 10 {
 		recommendedAmount = 10
 	}
 
-	// 评估加倍决策
-	shouldDouble := false
-	doubleROI := 0.0
-
-	if probResult.ActionAnalysis != nil && probResult.ActionAnalysis.CanDouble {
-		doubleROI = (doubleWinProb * 2.0) - 1.0 // 加倍的期望ROI
-		// 当加倍的期望ROI明显好于停牌，且凯利比例支持时推荐加倍
-		standROI := (probResult.ActionAnalysis.StandWinRate * 1.0) - (1.0 - probResult.ActionAnalysis.StandWinRate)
-		shouldDouble = doubleROI > standROI && conservativeDoubleKelly > 0.02
-	}
-
 	// 风险评估
-	riskLevel := pc.assessRiskLevel(combinedKelly)
-	growthRate := pc.calculateExpectedGrowthRate(adjustedWinProb, adjustedLoseProb, combinedKelly)
+	riskLevel := pc.assessRiskLevel(recommendedFraction)
+
+	// 加倍决策
+	shouldDouble := doubleKellyFraction > 0.02 && probResult.ActionAnalysis != nil && probResult.ActionAnalysis.CanDouble
+	doubleROI := doubleWinProb*2.0 - 1.0
+
+	// 计算期望增长率
+	expectedGrowthRate := pc.calculateExpectedGrowthRate(winProb, loseProb, recommendedFraction)
 
 	return &KellyRecommendation{
-		StandardKellyFraction:  standardKelly,
-		BlackjackKellyFraction: blackjackKelly,
-		DoubleKellyFraction:    doubleKelly,
+		StandardKellyFraction:  standardKellyFraction,
+		BlackjackKellyFraction: blackjackKellyFraction,
+		DoubleKellyFraction:    doubleKellyFraction,
 		RecommendedBetAmount:   recommendedAmount,
 		RecommendedBetFraction: recommendedFraction,
 		ShouldDouble:           shouldDouble,
 		DoubleExpectedROI:      doubleROI,
 		RiskLevel:              riskLevel,
-		ExpectedGrowthRate:     growthRate,
+		ExpectedGrowthRate:     expectedGrowthRate,
 	}
 }
 
@@ -882,16 +881,17 @@ func (pc *ProbabilityCalculator) calculateKellyFraction(winProb, loseProb, odds 
 	kelly := (odds*winProb - loseProb) / odds
 
 	// 确保非负值
-	return max(0, kelly)
+	return maxFloat64(0, kelly)
 }
 
 // assessRiskLevel 评估风险等级
 func (pc *ProbabilityCalculator) assessRiskLevel(kellyFraction float64) string {
-	if kellyFraction <= 0.02 {
+	switch {
+	case kellyFraction <= 0.02:
 		return "Low"
-	} else if kellyFraction <= 0.05 {
+	case kellyFraction <= 0.05:
 		return "Medium"
-	} else {
+	default:
 		return "High"
 	}
 }
@@ -909,19 +909,21 @@ func (pc *ProbabilityCalculator) calculateExpectedGrowthRate(winProb, loseProb, 
 	return expectedReturn
 }
 
-// max 返回两个float64中的较大值
-func max(a, b float64) float64 {
+// maxFloat64 returns the maximum of two float64 values
+func maxFloat64(a, b float64) float64 {
 	if a > b {
 		return a
 	}
+
 	return b
 }
 
-// min 返回两个float64中的较小值
-func min(a, b float64) float64 {
+// minFloat64 returns the minimum of two float64 values
+func minFloat64(a, b float64) float64 {
 	if a < b {
 		return a
 	}
+
 	return b
 }
 
@@ -942,7 +944,8 @@ func (pc *ProbabilityCalculator) CalculateBasicKellyFraction(winRate, loseRate f
 	var recommendedAmount int
 	var riskLevel string
 
-	if currentChips >= 1000 {
+	switch {
+	case currentChips >= 1000:
 		// 资金充足：建议保守下注（1-2%）
 		recommendedFraction = 0.015 // 1.5%
 		calculatedAmount := int(float64(currentChips) * recommendedFraction)
@@ -952,7 +955,7 @@ func (pc *ProbabilityCalculator) CalculateBasicKellyFraction(winRate, loseRate f
 			recommendedAmount = 10
 		}
 		riskLevel = "Low"
-	} else if currentChips >= 500 {
+	case currentChips >= 500:
 		// 资金中等：稍微保守（1%）
 		recommendedFraction = 0.01 // 1%
 		calculatedAmount := int(float64(currentChips) * recommendedFraction)
@@ -962,12 +965,12 @@ func (pc *ProbabilityCalculator) CalculateBasicKellyFraction(winRate, loseRate f
 			recommendedAmount = 10
 		}
 		riskLevel = "Low"
-	} else if currentChips >= 200 {
+	case currentChips >= 200:
 		// 资金较少：更加保守（0.5%）
 		recommendedFraction = 0.005 // 0.5%
 		recommendedAmount = 10      // 最小下注
 		riskLevel = "Medium"
-	} else {
+	default:
 		// 资金紧张：最小下注或考虑离开
 		recommendedFraction = 0.0
 		recommendedAmount = 10 // 最小下注

@@ -1,5 +1,5 @@
+// Package cli provides command line interface functionality for the blackjack game.
 package cli
-
 
 // 显示行动常量
 const (

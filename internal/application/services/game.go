@@ -1,3 +1,4 @@
+// Package services contains application services for the blackjack game.
 package services
 
 import (
@@ -27,11 +28,14 @@ func (s *GameApplicationService) StartNewRound() error {
 	return s.game.StartNewRound()
 }
 
+// StartDealerTurn starts the dealer's turn by changing the game state
 func (s *GameApplicationService) StartDealerTurn() bool {
 	if s.game.State != entities.StatePlayerTurn {
 		return false
 	}
+
 	s.game.State = entities.StateDealerTurn
+
 	return true
 }
 

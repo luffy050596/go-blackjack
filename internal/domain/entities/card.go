@@ -1,3 +1,4 @@
+// Package entities contains domain entities for the blackjack game.
 package entities
 
 import (
@@ -9,9 +10,13 @@ import (
 type Suit int
 
 const (
+	// Hearts represents the hearts suit
 	Hearts Suit = iota
+	// Diamonds represents the diamonds suit
 	Diamonds
+	// Clubs represents the clubs suit
 	Clubs
+	// Spades represents the spades suit
 	Spades
 )
 
@@ -34,18 +39,31 @@ func (s Suit) String() string {
 type Rank int
 
 const (
+	// Ace represents the ace rank (value 1)
 	Ace Rank = iota + 1
+	// Two represents the two rank (value 2)
 	Two
+	// Three represents the three rank (value 3)
 	Three
+	// Four represents the four rank (value 4)
 	Four
+	// Five represents the five rank (value 5)
 	Five
+	// Six represents the six rank (value 6)
 	Six
+	// Seven represents the seven rank (value 7)
 	Seven
+	// Eight represents the eight rank (value 8)
 	Eight
+	// Nine represents the nine rank (value 9)
 	Nine
+	// Ten represents the ten rank (value 10)
 	Ten
+	// Jack represents the jack rank (value 11)
 	Jack
+	// Queen represents the queen rank (value 12)
 	Queen
+	// King represents the king rank (value 13)
 	King
 )
 
