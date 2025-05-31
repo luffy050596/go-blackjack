@@ -1,10 +1,16 @@
-package model
+package entities
 
 import "strings"
 
 // Hand 手牌结构
 type Hand struct {
 	Cards []Card
+}
+
+func NewHand() *Hand {
+	return &Hand{
+		Cards: make([]Card, 0, 8),
+	}
 }
 
 // AddCard 添加牌到手牌

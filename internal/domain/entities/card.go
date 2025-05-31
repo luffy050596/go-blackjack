@@ -1,4 +1,4 @@
-package model
+package entities
 
 import (
 	"fmt"
@@ -70,7 +70,15 @@ type Card struct {
 	Rank Rank
 }
 
+// IsEmpty 检查是否为空牌（零值）
+func (c Card) IsEmpty() bool {
+	return c.Suit == 0 && c.Rank == 0
+}
+
 func (c Card) String() string {
+	if c.IsEmpty() {
+		return "空牌"
+	}
 	return fmt.Sprintf("%s%s", c.Rank, c.Suit)
 }
 

@@ -1,6 +1,7 @@
-package model
+package entities
 
 import (
+	"errors"
 	"math/rand/v2"
 	"time"
 )
@@ -37,11 +38,11 @@ func (d *Deck) Shuffle() {
 }
 
 // Deal 发牌
-func (d *Deck) Deal() Card {
+func (d *Deck) Deal() (Card, error) {
 	if len(d.Cards) == 0 {
-		panic("牌堆已空！")
+		return Card{}, errors.New("牌堆已空！")
 	}
 	card := d.Cards[0]
 	d.Cards = d.Cards[1:]
-	return card
+	return card, nil
 }

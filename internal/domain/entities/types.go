@@ -1,4 +1,4 @@
-package game
+package entities
 
 // ResultType 游戏结果类型
 type ResultType int
@@ -25,7 +25,8 @@ type GameResult struct {
 type PlayerAction int
 
 const (
-	ActionHit PlayerAction = iota
+	ActionInvalid PlayerAction = iota
+	ActionHit
 	ActionStand
 	ActionDoubleDown
 	ActionQuit
@@ -53,19 +54,4 @@ const (
 	InputYesFull    = "yes"
 	InputNo         = "n"
 	InputNoFull     = "no"
-)
-
-// 显示行动常量
-const (
-	DisplayActionStand  = "stand"
-	DisplayActionDouble = "double"
-	DisplayActionHit    = "hit"
-	DisplayActionBust   = "bust"
-)
-
-// 菜单选项常量
-const (
-	MenuOptionStart = "1"
-	MenuOptionRules = "2"
-	MenuOptionExit  = "3"
 )

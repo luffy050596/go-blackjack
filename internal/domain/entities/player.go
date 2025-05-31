@@ -1,24 +1,20 @@
-package model
+package entities
 
 // Player 玩家结构
 type Player struct {
 	Name         string
-	Hand         Hand
+	Hand         *Hand
 	InitialChips int  // 初始筹码
 	Chips        int  // 玩家筹码总数
 	Bet          int  // 当前下注金额
 	DoubledDown  bool // 是否已经加倍
 }
 
-// Dealer 庄家结构
-type Dealer struct {
-	Hand Hand
-}
-
 // NewPlayer 创建新玩家
 func NewPlayer(name string, initialChips int) *Player {
 	return &Player{
 		Name:         name,
+		Hand:         NewHand(),
 		InitialChips: initialChips,
 		Chips:        initialChips,
 		Bet:          0,
@@ -82,7 +78,7 @@ func (p *Player) CanDoubleDown() bool {
 
 // ResetRound 重置回合状态
 func (p *Player) ResetRound() {
-	p.Hand = Hand{}
+	p.Hand = NewHand()
 	p.Bet = 0
 	p.DoubledDown = false
 }
