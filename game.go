@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+const (
+	InitialChips = 1000
+)
+
 // Game 游戏结构
 type Game struct {
 	Deck        *Deck
@@ -21,7 +25,7 @@ type Game struct {
 func NewGame() *Game {
 	return &Game{
 		Deck:        NewDeck(),
-		Player:      NewPlayer("玩家", 1000), // 初始筹码1000
+		Player:      NewPlayer("玩家", InitialChips),
 		Dealer:      &Dealer{},
 		Scanner:     bufio.NewScanner(os.Stdin),
 		RoundNumber: 0, // 初始轮数为0
@@ -35,10 +39,6 @@ func (g *Game) clearScreen() {
 
 // dealInitialCards 发初始牌
 func (g *Game) dealInitialCards() {
-	// 重置手牌
-	g.Player.Hand = Hand{}
-	g.Dealer.Hand = Hand{}
-
 	// 发两张牌给玩家和庄家
 	for range 2 {
 		g.Player.Hand.AddCard(g.Deck.Deal())
@@ -59,6 +59,8 @@ func (g *Game) playRound() {
 		fmt.Println("💸 你的筹码用完了！游戏结束！")
 		return
 	}
+
+	g.Player.ResetRound()
 
 	// 下注阶段
 	if !g.placeBet() {
@@ -164,7 +166,24 @@ func (g *Game) playerTurn() {
 			return
 		}
 
-		choice := g.getInput("请选择: (h)要牌 (s)停牌 (q)退出游戏: ")
+		// 如果已经加倍，只能拿一张牌后必须停牌
+		if g.Player.DoubledDown {
+			fmt.Println("你已经加倍，必须拿一张牌后停牌...")
+			card := g.Deck.Deal()
+			g.Player.Hand.AddCard(card)
+			fmt.Printf("你拿到了: %s\n", card)
+			time.Sleep(2 * time.Second)
+			return
+		}
+
+		// 构建选项提示
+		prompt := "请选择: (h)要牌 (s)停牌"
+		if g.Player.CanDoubleDown() {
+			prompt += " (d)加倍"
+		}
+		prompt += " (q)退出游戏: "
+
+		choice := g.getInput(prompt)
 
 		switch strings.ToLower(choice) {
 		case "h", "hit":
@@ -175,6 +194,21 @@ func (g *Game) playerTurn() {
 			fmt.Println("你选择停牌")
 			time.Sleep(1 * time.Second)
 			return
+		case "d", "double", "doubledown":
+			if g.Player.CanDoubleDown() {
+				if g.Player.DoubleBet() {
+					fmt.Printf("✅ 加倍成功！新的下注金额: %d\n", g.Player.Bet)
+					fmt.Printf("💰 剩余筹码: %d\n", g.Player.Chips)
+					fmt.Println("现在你必须拿一张牌后停牌...")
+					time.Sleep(2 * time.Second)
+				} else {
+					fmt.Println("❌ 筹码不足，无法加倍")
+					time.Sleep(1 * time.Second)
+				}
+			} else {
+				fmt.Println("❌ 现在无法加倍")
+				time.Sleep(1 * time.Second)
+			}
 		case "q", "quit":
 			fmt.Println("感谢游戏！再见！")
 			os.Exit(0)
@@ -223,14 +257,23 @@ func (g *Game) determineWinner() {
 	playerBlackjack := g.Player.Hand.IsBlackjack()
 	dealerBlackjack := g.Dealer.Hand.IsBlackjack()
 	betAmount := g.Player.Bet // 保存下注金额用于显示
+	isDoubled := g.Player.DoubledDown
 
 	fmt.Printf("=== 第%d轮游戏结果 ===\n", g.RoundNumber)
-	fmt.Printf("💰 下注金额: %d\n", betAmount)
+	fmt.Printf("💰 下注金额: %d", betAmount)
+	if isDoubled {
+		fmt.Printf(" (加倍)")
+	}
+	fmt.Println()
 
 	if g.Player.Hand.IsBust() {
 		fmt.Println("💀 你爆牌了，庄家获胜！")
 		g.Player.LoseBet()
-		fmt.Printf("💸 损失: %d 筹码\n", betAmount)
+		fmt.Printf("💸 损失: %d 筹码", betAmount)
+		if isDoubled {
+			fmt.Printf(" (加倍后)")
+		}
+		fmt.Println()
 		g.showChipsStatus()
 		return
 	}
@@ -238,7 +281,12 @@ func (g *Game) determineWinner() {
 	if g.Dealer.Hand.IsBust() {
 		fmt.Println("🎉 庄家爆牌，你获胜！")
 		g.Player.WinBet(1.0) // 1:1 赔率
-		fmt.Printf("💰 获得: %d 筹码 (1:1)\n", betAmount)
+		winnings := betAmount
+		fmt.Printf("💰 获得: %d 筹码 (1:1)", winnings)
+		if isDoubled {
+			fmt.Printf(" (加倍后)")
+		}
+		fmt.Println()
 		g.showChipsStatus()
 		return
 	}
@@ -252,10 +300,18 @@ func (g *Game) determineWinner() {
 	}
 
 	if playerBlackjack {
-		fmt.Println("🎉 你拿到Blackjack，获胜！(3:2赔率)")
-		winnings := int(float64(betAmount) * 1.5)
-		g.Player.WinBet(1.5) // 3:2 赔率
-		fmt.Printf("💰 获得: %d 筹码 (3:2)\n", winnings)
+		// 注意：加倍后的Blackjack通常只按1:1赔率，不是3:2
+		if isDoubled {
+			fmt.Println("🎉 你拿到Blackjack，获胜！(加倍后按1:1赔率)")
+			g.Player.WinBet(1.0) // 加倍后Blackjack按1:1赔率
+			winnings := betAmount
+			fmt.Printf("💰 获得: %d 筹码 (1:1 加倍后)\n", winnings)
+		} else {
+			fmt.Println("🎉 你拿到Blackjack，获胜！(3:2赔率)")
+			winnings := int(float64(betAmount) * 1.5)
+			g.Player.WinBet(1.5) // 3:2 赔率
+			fmt.Printf("💰 获得: %d 筹码 (3:2)\n", winnings)
+		}
 		g.showChipsStatus()
 		return
 	}
@@ -263,7 +319,11 @@ func (g *Game) determineWinner() {
 	if dealerBlackjack {
 		fmt.Println("💀 庄家拿到Blackjack，你输了！")
 		g.Player.LoseBet()
-		fmt.Printf("💸 损失: %d 筹码\n", betAmount)
+		fmt.Printf("💸 损失: %d 筹码", betAmount)
+		if isDoubled {
+			fmt.Printf(" (加倍后)")
+		}
+		fmt.Println()
 		g.showChipsStatus()
 		return
 	}
@@ -271,12 +331,21 @@ func (g *Game) determineWinner() {
 	if playerValue > dealerValue {
 		fmt.Println("🎉 你的点数更高，获胜！")
 		g.Player.WinBet(1.0) // 1:1 赔率
-		fmt.Printf("💰 获得: %d 筹码 (1:1)\n", betAmount)
+		winnings := betAmount
+		fmt.Printf("💰 获得: %d 筹码 (1:1)", winnings)
+		if isDoubled {
+			fmt.Printf(" (加倍后)")
+		}
+		fmt.Println()
 		g.showChipsStatus()
 	} else if playerValue < dealerValue {
 		fmt.Println("💀 庄家点数更高，你输了！")
 		g.Player.LoseBet()
-		fmt.Printf("💸 损失: %d 筹码\n", betAmount)
+		fmt.Printf("💸 损失: %d 筹码", betAmount)
+		if isDoubled {
+			fmt.Printf(" (加倍后)")
+		}
+		fmt.Println()
 		g.showChipsStatus()
 	} else {
 		fmt.Println("🤝 点数相同，平局！")
@@ -310,5 +379,19 @@ func (g *Game) displayGame(hideDealer bool) {
 
 	// 显示玩家手牌
 	fmt.Printf("%s: %s (点数: %d)\n", g.Player.Name, g.Player.Hand.String(), g.Player.Hand.Value())
+	fmt.Println()
+}
+
+// 游戏结算
+func (g *Game) displayGameOver() {
+	fmt.Println()
+	fmt.Println("🎉 游戏结算：")
+	fmt.Printf("💰 共进行%d轮游戏。最终筹码: %d ", g.RoundNumber, g.Player.Chips)
+	if g.Player.Chips > g.Player.InitialChips {
+		fmt.Printf("盈利: %d\n", g.Player.Chips-g.Player.InitialChips)
+	} else {
+		fmt.Printf("亏损: %d\n", g.Player.InitialChips-g.Player.Chips)
+	}
+	fmt.Println("🎉 游戏结束！欢迎下次再来！")
 	fmt.Println()
 }

@@ -2,10 +2,12 @@ package main
 
 // Player 玩家结构
 type Player struct {
-	Name  string
-	Hand  Hand
-	Bet   int // 当前下注金额
-	Chips int // 玩家筹码总数
+	Name         string
+	Hand         Hand
+	InitialChips int  // 初始筹码
+	Chips        int  // 玩家筹码总数
+	Bet          int  // 当前下注金额
+	DoubledDown  bool // 是否已经加倍
 }
 
 // Dealer 庄家结构
@@ -16,15 +18,16 @@ type Dealer struct {
 // NewPlayer 创建新玩家
 func NewPlayer(name string, initialChips int) *Player {
 	return &Player{
-		Name:  name,
-		Chips: initialChips,
-		Bet:   0,
+		Name:         name,
+		InitialChips: initialChips,
+		Chips:        initialChips,
+		Bet:          0,
 	}
 }
 
 // CanBet 检查玩家是否有足够筹码下注
 func (p *Player) CanBet(amount int) bool {
-	return p.Chips >= amount && amount > 0
+	return amount > 0 && p.Chips >= amount
 }
 
 // PlaceBet 下注
@@ -46,7 +49,6 @@ func (p *Player) WinBet(multiplier float64) {
 
 // LoseBet 输掉下注
 func (p *Player) LoseBet() {
-	// 下注金额已经在PlaceBet时扣除，这里只需要清零当前下注
 	p.Bet = 0
 }
 
@@ -59,4 +61,28 @@ func (p *Player) PushBet() {
 // HasChips 检查玩家是否还有筹码
 func (p *Player) HasChips() bool {
 	return p.Chips > 0
+}
+
+// DoubleBet 加倍下注
+func (p *Player) DoubleBet() bool {
+	if !p.CanBet(p.Bet) {
+		return false
+	}
+	p.Chips -= p.Bet // 扣除额外的下注金额
+	p.Bet *= 2       // 下注金额翻倍
+	p.DoubledDown = true
+	return true
+}
+
+// CanDoubleDown 检查是否可以加倍
+func (p *Player) CanDoubleDown() bool {
+	// 只有在前两张牌且有足够筹码时才能加倍
+	return len(p.Hand.Cards) == 2 && !p.DoubledDown && p.CanBet(p.Bet)
+}
+
+// ResetRound 重置回合状态
+func (p *Player) ResetRound() {
+	p.Hand = Hand{}
+	p.Bet = 0
+	p.DoubledDown = false
 }

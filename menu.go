@@ -9,7 +9,7 @@ import (
 // showMenu 主菜单
 func (g *Game) showMenu() {
 	for {
-		g.clearScreen()
+		// g.clearScreen()
 		fmt.Println("🃏 欢迎来到二十一点游戏！ 🃏")
 		fmt.Println()
 		fmt.Println("1. 开始游戏")
@@ -76,4 +76,6 @@ func (g *Game) gameLoop() {
 			}
 		}
 	}
+
+	g.displayGameOver()
 }
