@@ -3,15 +3,12 @@ package main
 import (
 	"fmt"
 	"strings"
-	"time"
 )
 
 // showMenu 主菜单
 func (g *Game) showMenu() {
 	for {
-		// g.clearScreen()
-		fmt.Println("🃏 欢迎来到二十一点游戏！ 🃏")
-		fmt.Println()
+		g.display.showWelcome()
 		fmt.Println("1. 开始游戏")
 		fmt.Println("2. 查看规则")
 		fmt.Println("3. 退出游戏")
@@ -20,25 +17,17 @@ func (g *Game) showMenu() {
 		choice := g.getInput("请选择 (1-3): ")
 
 		switch choice {
-		case "1":
+		case MenuOptionStart:
 			g.gameLoop()
-		case "2":
+		case MenuOptionRules:
 			g.showRules()
-		case "3":
-			fmt.Println("感谢游戏！再见！")
+		case MenuOptionExit:
+			g.display.showInfo("感谢游戏！再见！")
 			return
 		default:
-			fmt.Println("无效选择，请重新输入")
-			time.Sleep(1 * time.Second)
+			g.display.showError("无效选择，请重新输入")
 		}
 	}
-}
-
-// getInput 获取用户输入
-func (g *Game) getInput(prompt string) string {
-	fmt.Print(prompt)
-	g.Scanner.Scan()
-	return strings.TrimSpace(g.Scanner.Text())
 }
 
 // gameLoop 游戏循环
@@ -48,16 +37,11 @@ func (g *Game) gameLoop() {
 
 		// 检查玩家是否还有筹码
 		if !g.Player.HasChips() {
-			fmt.Println("💸 你的筹码用完了！")
-			fmt.Println()
+			g.display.showInfo("你的筹码用完了！")
 			choice := g.getInput("是否重新开始游戏？(y/n): ")
-			if strings.ToLower(choice) == "y" || strings.ToLower(choice) == "yes" {
-				// 重置玩家筹码
-				g.Player.Chips = 1000
-				g.Player.Bet = 0
-				g.RoundNumber = 0
-				fmt.Println("🎉 重新开始！你获得了1000筹码")
-				time.Sleep(1 * time.Second)
+			if strings.ToLower(choice) == InputYes || strings.ToLower(choice) == InputYesFull {
+				g.resetGame()
+				g.display.showInfo("🎉 重新开始！你获得了1000筹码")
 				continue
 			} else {
 				break
@@ -71,11 +55,18 @@ func (g *Game) gameLoop() {
 			fmt.Println()
 			choice := g.getInput("再来一局？(y/n): ")
 
-			if strings.ToLower(choice) != "y" && strings.ToLower(choice) != "yes" {
+			if strings.ToLower(choice) != InputYes && strings.ToLower(choice) != InputYesFull {
 				break
 			}
 		}
 	}
 
-	g.displayGameOver()
+	g.display.showGameOver()
+}
+
+// resetGame 重置游戏状态
+func (g *Game) resetGame() {
+	g.Player.Chips = InitialChips
+	g.Player.Bet = 0
+	g.RoundNumber = 0
 }
