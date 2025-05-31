@@ -147,9 +147,17 @@ func (h *GameHandler) handleBetting() bool {
 func (h *GameHandler) handlePlayerTurn() error {
 	h.display.ShowPlayerTurnStart()
 
+	defer func() {
+		h.gameService.StartDealerTurn()
+	}()
+
 	for {
 		gameState := h.gameService.GetGameState()
 		h.display.ShowGameState(gameState, true)
+
+		// 显示获胜概率
+		probabilities := h.gameService.CalculateWinProbabilities()
+		h.display.ShowProbabilities(probabilities)
 
 		// 检查21点
 		if gameState.PlayerHand.Value == 21 && len(gameState.PlayerHand.Cards) == 2 {

@@ -46,7 +46,6 @@ func (d *DisplayService) ShowError(message string) {
 
 // ShowRoundStart 显示回合开始
 func (d *DisplayService) ShowRoundStart(round, chips int) {
-	d.clearScreen()
 	fmt.Printf("🎯 第 %d 轮游戏开始! 💰 当前筹码: %d\n", round, chips)
 	fmt.Println(strings.Repeat("=", 40))
 	fmt.Println()
@@ -114,7 +113,7 @@ func (d *DisplayService) buildPlayerPrompt(options ...playerPromptOption) string
 
 // ShowGameState 显示游戏状态
 func (d *DisplayService) ShowGameState(gameState *dtos.GameStateDTO, hideFirstDealerCard bool) {
-	fmt.Print("\n🃏 庄家手牌")
+	fmt.Print("\n👨 庄家手牌")
 	if hideFirstDealerCard && len(gameState.DealerHand.Cards) > 1 {
 		fmt.Println(" (第一张牌隐藏):")
 		d.showHand(gameState.DealerHand, true)
@@ -123,7 +122,7 @@ func (d *DisplayService) ShowGameState(gameState *dtos.GameStateDTO, hideFirstDe
 		d.showHand(gameState.DealerHand, false)
 	}
 
-	fmt.Printf("\n🃏 玩家手牌 (点数: %d):\n", gameState.PlayerHand.Value)
+	fmt.Printf("\n👨 玩家手牌 (点数: %d):\n", gameState.PlayerHand.Value)
 	d.showHand(gameState.PlayerHand, false)
 
 	fmt.Println()
@@ -212,6 +211,98 @@ func (d *DisplayService) ShowGameResult(result *dtos.GameResultDTO) {
 func (d *DisplayService) ShowGameOver() {
 	fmt.Println("💸 筹码用完了！游戏结束！")
 	fmt.Println("感谢游戏！")
+}
+
+// ShowProbabilities 显示获胜概率
+func (d *DisplayService) ShowProbabilities(probabilities *dtos.ProbabilityResultDTO) {
+	if probabilities == nil {
+		return
+	}
+
+	fmt.Println(strings.Repeat("─", 40))
+	fmt.Println("📊 当前获胜概率分析")
+	fmt.Println(strings.Repeat("─", 40))
+
+	// 主要概率
+	fmt.Printf("🟢 玩家获胜概率: %.1f%%\n", probabilities.PlayerWinProbability*100)
+	fmt.Printf("🔴 庄家获胜概率: %.1f%%\n", probabilities.DealerWinProbability*100)
+	fmt.Printf("🟡 平局概率:     %.1f%%\n", probabilities.PushProbability*100)
+
+	fmt.Println()
+
+	// 详细概率
+	fmt.Println("📈 详细分析:")
+	fmt.Printf("   💥 玩家爆牌概率: %.1f%%\n", probabilities.PlayerBustProbability*100)
+	fmt.Printf("   💥 庄家爆牌概率: %.1f%%\n", probabilities.DealerBustProbability*100)
+	fmt.Printf("   🎯 玩家21点概率: %.1f%%\n", probabilities.Player21Probability*100)
+	fmt.Printf("   🎯 庄家21点概率: %.1f%%\n", probabilities.Dealer21Probability*100)
+
+	// 如果有自然21点（Blackjack），也显示出来
+	if probabilities.PlayerBlackjackProb > 0 {
+		fmt.Printf("   🌟 玩家Blackjack概率: %.1f%%\n", probabilities.PlayerBlackjackProb*100)
+	}
+	if probabilities.DealerBlackjackProb > 0 {
+		fmt.Printf("   🌟 庄家Blackjack概率: %.1f%%\n", probabilities.DealerBlackjackProb*100)
+	}
+
+	// 操作胜率分析
+	if probabilities.ActionAnalysis != nil {
+		d.showActionAnalysis(probabilities.ActionAnalysis)
+	}
+
+	fmt.Println(strings.Repeat("─", 40))
+	fmt.Println()
+}
+
+// showActionAnalysis 显示操作胜率分析
+func (d *DisplayService) showActionAnalysis(analysis *dtos.ActionAnalysisDTO) {
+	fmt.Println()
+	fmt.Println("🎯 操作胜率对比:")
+
+	actions := []struct {
+		name    string
+		winRate float64
+		canUse  bool
+		symbol  string
+	}{
+		{"停牌", analysis.StandWinRate, analysis.CanStand, "✋"},
+		{"要牌", analysis.HitWinRate, analysis.CanHit, "👆"},
+		{"加倍", analysis.DoubleWinRate, analysis.CanDouble, "⚡"},
+		{"分牌", analysis.SplitWinRate, analysis.CanSplit, "✂️"},
+	}
+
+	// 显示可用操作的胜率
+	for _, action := range actions {
+		if action.canUse {
+			// 如果是推荐操作，添加特殊标记
+			if analysis.RecommendedAction == getActionKey(action.name) {
+				fmt.Printf("   %s %s: %.1f%% ⭐ (推荐)\n", action.symbol, action.name, action.winRate*100)
+			} else {
+				fmt.Printf("   %s %s: %.1f%%\n", action.symbol, action.name, action.winRate*100)
+			}
+		}
+	}
+
+	// 显示最优期望值
+	if analysis.ExpectedValue > 0 {
+		fmt.Printf("\n🏆 最优策略期望胜率: %.1f%%\n", analysis.ExpectedValue*100)
+	}
+}
+
+// getActionKey 将操作名称转换为操作键
+func getActionKey(actionName string) string {
+	switch actionName {
+	case "停牌":
+		return "stand"
+	case "要牌":
+		return "hit"
+	case "加倍":
+		return "double"
+	case "分牌":
+		return "split"
+	default:
+		return ""
+	}
 }
 
 // clearScreen 清屏

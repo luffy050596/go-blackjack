@@ -105,19 +105,11 @@ func (g *Game) PlayerHit() (Card, error) {
 
 	g.Player.Hand.AddCard(card)
 
-	// 检查是否爆牌或需要转到庄家回合
-	if g.Player.Hand.IsBust() || g.Player.Hand.IsBlackjack() {
-		g.State = StateDealerTurn
-	}
-
 	return card, nil
 }
 
 // PlayerStand 玩家停牌
 func (g *Game) PlayerStand() {
-	if g.State == StatePlayerTurn {
-		g.State = StateDealerTurn
-	}
 }
 
 // PlayerDoubleDown 玩家加倍
@@ -139,8 +131,6 @@ func (g *Game) PlayerDoubleDown() (Card, error) {
 		return Card{}, err
 	}
 
-	// 加倍后只能拿一张牌
-	g.State = StateDealerTurn
 	return card, nil
 }
 
@@ -148,6 +138,12 @@ func (g *Game) PlayerDoubleDown() (Card, error) {
 func (g *Game) DealerTurn() error {
 	if g.State != StateDealerTurn {
 		return errors.New("not dealer's turn")
+	}
+
+	// 如果玩家爆牌或任一方有Blackjack，庄家不需要额外要牌
+	if g.Player.Hand.IsBust() || g.Player.Hand.IsBlackjack() || g.Dealer.Hand.IsBlackjack() {
+		g.State = StateGameOver
+		return nil
 	}
 
 	// 庄家按规则要牌
@@ -230,4 +226,17 @@ func (g *Game) ensureDeckSize() {
 // generateGameID 生成游戏ID
 func generateGameID() string {
 	return uuid.New().String()
+}
+
+// GetRemainingCards 获取剩余卡牌（用于概率计算）
+func (g *Game) GetRemainingCards() []Card {
+	return g.Deck.Cards
+}
+
+// GetUsedCards 获取已使用的卡牌（玩家和庄家手牌）
+func (g *Game) GetUsedCards() []Card {
+	used := make([]Card, 0)
+	used = append(used, g.Player.Hand.Cards...)
+	used = append(used, g.Dealer.Hand.Cards...)
+	return used
 }

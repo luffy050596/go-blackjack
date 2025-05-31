@@ -9,19 +9,30 @@ import (
 
 // GameApplicationService 游戏应用服务
 type GameApplicationService struct {
-	game *entities.Game
+	game            *entities.Game
+	probabilityCalc *ProbabilityCalculator
 }
 
 // NewGameApplicationService 创建游戏应用服务
 func NewGameApplicationService(playerName string) *GameApplicationService {
+	game := entities.NewGame(playerName)
 	return &GameApplicationService{
-		game: entities.NewGame(playerName),
+		game:            game,
+		probabilityCalc: NewProbabilityCalculator(game.Deck),
 	}
 }
 
 // StartNewRound 开始新一轮
 func (s *GameApplicationService) StartNewRound() error {
 	return s.game.StartNewRound()
+}
+
+func (s *GameApplicationService) StartDealerTurn() bool {
+	if s.game.State != entities.StatePlayerTurn {
+		return false
+	}
+	s.game.State = entities.StateDealerTurn
+	return true
 }
 
 // GetGameState 获取游戏状态
@@ -146,6 +157,55 @@ func (s *GameApplicationService) CanPlayerDoubleDown() bool {
 // IsGameOver 检查游戏是否结束
 func (s *GameApplicationService) IsGameOver() bool {
 	return s.game.IsGameOver()
+}
+
+// CalculateWinProbabilities 计算当前状态下的获胜概率
+func (s *GameApplicationService) CalculateWinProbabilities() *dtos.ProbabilityResultDTO {
+	// 只在玩家回合计算概率
+	if s.game.State != entities.StatePlayerTurn {
+		return nil
+	}
+
+	// 获取剩余卡牌
+	remainingCards := s.game.GetRemainingCards()
+
+	// 计算概率
+	result := s.probabilityCalc.CalculateWinProbabilities(
+		s.game.Player.Hand,
+		s.game.Dealer.Hand,
+		remainingCards,
+	)
+
+	// 转换操作分析为DTO
+	var actionAnalysisDTO *dtos.ActionAnalysisDTO
+	if result.ActionAnalysis != nil {
+		actionAnalysisDTO = &dtos.ActionAnalysisDTO{
+			HitWinRate:        result.ActionAnalysis.HitWinRate,
+			StandWinRate:      result.ActionAnalysis.StandWinRate,
+			DoubleWinRate:     result.ActionAnalysis.DoubleWinRate,
+			SplitWinRate:      result.ActionAnalysis.SplitWinRate,
+			CanHit:            result.ActionAnalysis.CanHit,
+			CanStand:          result.ActionAnalysis.CanStand,
+			CanDouble:         result.ActionAnalysis.CanDouble,
+			CanSplit:          result.ActionAnalysis.CanSplit,
+			RecommendedAction: result.ActionAnalysis.RecommendedAction,
+			ExpectedValue:     result.ActionAnalysis.ExpectedValue,
+		}
+	}
+
+	// 转换为DTO
+	return &dtos.ProbabilityResultDTO{
+		PlayerWinProbability:  result.PlayerWinProbability,
+		DealerWinProbability:  result.DealerWinProbability,
+		PushProbability:       result.PushProbability,
+		PlayerBlackjackProb:   result.PlayerBlackjackProb,
+		DealerBlackjackProb:   result.DealerBlackjackProb,
+		PlayerBustProbability: result.PlayerBustProbability,
+		DealerBustProbability: result.DealerBustProbability,
+		Player21Probability:   result.Player21Probability,
+		Dealer21Probability:   result.Dealer21Probability,
+		ActionAnalysis:        actionAnalysisDTO,
+	}
 }
 
 // 辅助函数：转换Hand到DTO
